@@ -9,14 +9,15 @@ import hudson.EnvVars;
 import hudson.model.Item;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.plugins.git.util.BuildData;
 import hudson.security.ACL;
 import hudson.util.ListBoxModel;
-import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.plaincredentials.StringCredentials;
 
 import org.jenkinsci.plugins.github_branch_source.GitHubAppCredentials;
 import org.jenkinsci.plugins.github_branch_source.Connector;
 import hudson.util.FormValidation;
+import org.jenkinsci.plugins.github_branch_source.app_credentials.AccessSpecifiedRepositories;
 
 import java.util.Collections;
 import java.util.List;
@@ -24,42 +25,58 @@ import java.io.IOException;
 
 import org.kohsuke.github.GHCommitState;
 import org.kohsuke.github.GHRepository;
-import org.kohsuke.github.GHApp;
-import org.kohsuke.github.GHAppInstallation;
-import org.kohsuke.github.GHAppInstallationToken;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
 
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
 public class CommitStatusCommon {
 
+    private static final Logger LOGGER = Logger.getLogger(CommitStatusCommon.class.getName());
+
     public static GitHub createGitHubClient(Run<?, ?> run, String credentialId, String repository) throws IOException {
-        if (credentialId == null) {
-            throw new IOException("No credential ID provided");
-        }
-
         List<StandardCredentials> foundCredentials = CredentialsProvider.lookupCredentialsInItem(StandardCredentials.class, run.getParent(), ACL.SYSTEM2, Collections.emptyList());
-        StandardCredentials credentials = CredentialsMatchers.firstOrNull(foundCredentials, CredentialsMatchers.withId(credentialId));
+        StandardCredentials credentials;
 
-        if (credentials == null) {
-            throw new IOException("Credential not found: " + credentialId);
+        if (credentialId != null && !credentialId.trim().isEmpty()) {
+            credentials = CredentialsMatchers.firstOrNull(foundCredentials, CredentialsMatchers.withId(credentialId));
+            if (credentials == null) {
+                LOGGER.warning("Credential not found for ID: " + credentialId);
+                throw new IOException("Credential not found: " + credentialId);
+            }
+        } else {
+            throw new IOException("No credential ID provided!");
         }
 
         if (credentials instanceof StringCredentials) {
             return new GitHubBuilder().withOAuthToken(((StringCredentials) credentials).getSecret().getPlainText()).build();
         } else if (credentials instanceof GitHubAppCredentials appCredentials) {
-            GitHub appClient = Connector.connect("https://api.github.com", appCredentials);
             try {
-                GHApp app = appClient.getApp();
                 String owner = repository.split("/")[0];
-                GHAppInstallation installation = app.getInstallationByRepository(owner, repository.split("/")[1]);
-                GHAppInstallationToken token = installation.createToken().create();
-                return new GitHubBuilder().withAppInstallationToken(token.getToken()).build();
+                // Clone the credential to set the owner
+                appCredentials = restrictGitHubCredentialsToOwner(appCredentials, owner);
+                return Connector.connect("https://api.github.com", appCredentials);
             } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Failed to authenticate as GitHub App for repository " + repository, e);
                 throw new IOException("Failed to authenticate as GitHub App for repository " + repository, e);
             }
         }
 
         throw new IOException("Unsupported credential type: " + credentials.getClass().getName());
+    }
+
+    private static GitHubAppCredentials restrictGitHubCredentialsToOwner(GitHubAppCredentials appCredentials, String owner) {
+        GitHubAppCredentials scoped = new GitHubAppCredentials(
+                appCredentials.getScope(),
+                appCredentials.getId() + "-" + owner,
+                appCredentials.getDescription(),
+                appCredentials.getAppID(),
+                appCredentials.getPrivateKey()
+        );
+        scoped.setRepositoryAccessStrategy(new AccessSpecifiedRepositories(owner, Collections.emptyList()));
+        scoped.setApiUri(appCredentials.getApiUri());
+        return scoped;
     }
 
     public static String resolveHeadCommit(Run<?, ?> run, EnvVars env) {
@@ -69,14 +86,15 @@ public class CommitStatusCommon {
         }
 
         try {
-            hudson.plugins.git.util.BuildData action = run.getAction(hudson.plugins.git.util.BuildData.class);
+            BuildData action = run.getAction(BuildData.class);
             if (action != null && action.getLastBuiltRevision() != null) {
                 return action.getLastBuiltRevision().getSha1String();
             }
         } catch (NoClassDefFoundError | Exception e) {
-            // Ignore
+            LOGGER.log(Level.FINE, "Failed to resolve head commit from BuildData: " + e.getMessage(), e);
         }
 
+        LOGGER.warning("Could not resolve HEAD commit SHA.");
         return null;
     }
 
@@ -111,6 +129,8 @@ public class CommitStatusCommon {
             throw new IOException("Could not determine repository name. Please specify it in the configuration.");
         }
 
+        LOGGER.log(Level.INFO, "Updating commit status for repo: {0}", targetRepo);
+
         String sha = resolveHeadCommit(run, env);
         if (sha == null || sha.isEmpty()) {
             throw new IOException("Could not determine GIT_COMMIT from environment or SCM configuration.");
@@ -123,7 +143,7 @@ public class CommitStatusCommon {
 
         String targetUrl = (statusUrl != null && !statusUrl.isEmpty()) ? env.expand(statusUrl) : env.get("BUILD_URL");
 
-        String statusContext = (context != null && !context.isEmpty()) ? env.expand(context) : "jenkins/codemc";
+        String statusContext = (context != null && !context.isEmpty()) ? env.expand(context) : "jenkins";
 
         ghRepo.createCommitStatus(sha, state, targetUrl, description, statusContext);
         listener.getLogger().println("[CodeMC GitHub Commit Status] Updated GitHub commit status for " + targetRepo + "@" + sha + " to " + state);
@@ -133,15 +153,29 @@ public class CommitStatusCommon {
     public static ListBoxModel doFillCredentialIdItems(Item item, String credentialId) {
         StandardListBoxModel result = new StandardListBoxModel();
         if (item == null) {
-            if (!Jenkins.get().hasPermission(Jenkins.ADMINISTER)) {
-                return result.includeCurrentValue(credentialId);
-            }
-        } else {
-            if (!item.hasPermission(Item.CONFIGURE) && !item.hasPermission(CredentialsProvider.USE_ITEM)) {
-                return result.includeCurrentValue(credentialId);
-            }
+            return result;
         }
-        return result.includeEmptyValue().includeMatchingAs(ACL.SYSTEM2, item, StandardCredentials.class, Collections.emptyList(), CredentialsMatchers.anyOf(CredentialsMatchers.instanceOf(StringCredentials.class), CredentialsMatchers.instanceOf(GitHubAppCredentials.class))).includeCurrentValue(credentialId);
+
+        // Filter for specific types
+        CredentialsProvider.lookupCredentialsInItem(
+                GitHubAppCredentials.class,
+                item,
+                ACL.SYSTEM2,
+                Collections.emptyList()
+        ).forEach(result::with);
+        CredentialsProvider.lookupCredentialsInItem(
+                StringCredentials.class,
+                item,
+                ACL.SYSTEM2,
+                Collections.emptyList()
+        ).forEach(result::with);
+
+        // Ensure current value is present
+        if (credentialId != null && !credentialId.trim().isEmpty()) {
+            result.includeCurrentValue(credentialId);
+        }
+
+        return result;
     }
 
     public static FormValidation doCheckRepository(String value) {

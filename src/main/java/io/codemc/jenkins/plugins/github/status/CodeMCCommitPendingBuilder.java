@@ -85,7 +85,7 @@ public class CodeMCCommitPendingBuilder extends Builder implements SimpleBuildSt
 
     @Symbol("gitHubCommitPendingBuilder")
     @Extension
-    public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
+    public static class DescriptorImpl extends BuildStepDescriptor<Builder> {
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
             return true;

@@ -128,7 +128,7 @@ public class CodeMCCommitStatusNotifier extends Notifier implements SimpleBuildS
 
     @Symbol("gitHubCommitStatusNotifier")
     @Extension
-    public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
+    public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
             return true;

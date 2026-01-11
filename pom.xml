@@ -15,7 +15,6 @@
     <packaging>hpi</packaging>
 
     <name>CodeMC GitHub Commit Status Plugin</name>
-    <description>Updates GitHub commit status with project-specific tokens</description>
     <url>https://github.com/codemc/codemc-github-commit-status</url>
 
     <licenses>
