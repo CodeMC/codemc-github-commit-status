@@ -33,6 +33,31 @@ Add the "CodeMC GitHub Commit Status" post-build action.
 -   **Custom Status Message**: (Optional).
 -   **Custom Target URL**: (Optional).
 
+### Pipeline Configuration
+
+You can use the following steps in your Jenkins Pipeline:
+
+**Set Pending Status:**
+```groovy
+gitHubCommitPendingPublisher(
+    credentialId: 'my-github-creds',
+    context: 'jenkins/codemc',
+    statusMessage: 'Build started...',
+    repository: 'owner/repo' // Optional, auto-detected if empty
+)
+```
+
+**Set Final Status (Post Build):**
+```groovy
+gitHubCommitStatusPublisher(
+    credentialId: 'my-github-creds',
+    context: 'jenkins/codemc',
+    statusMessage: 'Build finished correctly', // Optional
+    statusUrl: 'https://custom-url.com', // Optional
+    repository: 'owner/repo' // Optional
+)
+```
+
 ## Inspiration
 
 This plugin is heavily inspired by the official [Jenkins GitHub Plugin](https://plugins.jenkins.io/github/).

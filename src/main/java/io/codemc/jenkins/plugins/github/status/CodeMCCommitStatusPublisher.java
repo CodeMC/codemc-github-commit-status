@@ -120,7 +120,7 @@ public class CodeMCCommitStatusPublisher extends Recorder implements SimpleBuild
         return GHCommitState.FAILURE;
     }
 
-    @Symbol("codeMCGitHubCommitStatus")
+    @Symbol("gitHubCommitStatusPublisher")
     @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
         @Override

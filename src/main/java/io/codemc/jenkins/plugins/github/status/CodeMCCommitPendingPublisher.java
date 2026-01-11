@@ -23,7 +23,7 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import org.kohsuke.github.GHCommitState;
 
 @SuppressWarnings("unused")
-public class CodeMCPendingStatusBuilder extends Builder implements SimpleBuildStep {
+public class CodeMCCommitPendingPublisher extends Builder implements SimpleBuildStep {
 
     private final String credentialId;
     private final String repository;
@@ -33,7 +33,7 @@ public class CodeMCPendingStatusBuilder extends Builder implements SimpleBuildSt
     private String statusUrl;
 
     @DataBoundConstructor
-    public CodeMCPendingStatusBuilder(String credentialId, String repository, String context) {
+    public CodeMCCommitPendingPublisher(String credentialId, String repository, String context) {
         this.credentialId = credentialId;
         this.repository = repository;
         this.context = context;
@@ -83,7 +83,7 @@ public class CodeMCPendingStatusBuilder extends Builder implements SimpleBuildSt
         }
     }
 
-    @Symbol("codeMCGitHubPendingStatus")
+    @Symbol("gitHubCommitPendingPublisher")
     @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
         @Override
