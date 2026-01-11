@@ -1,0 +1,4 @@
+<?jelly escape-by-default='true'?>
+<div>
+  CodeMC Plugin to update GitHub commit status with project-specific credentials.
+</div>
