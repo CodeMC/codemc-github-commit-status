@@ -126,7 +126,7 @@ public class CommitStatusCommon {
         String statusContext = (context != null && !context.isEmpty()) ? env.expand(context) : "jenkins/codemc";
 
         ghRepo.createCommitStatus(sha, state, targetUrl, description, statusContext);
-        listener.getLogger().println("[CodeMC] Updated GitHub commit status for " + targetRepo + "@" + sha + " to " + state);
+        listener.getLogger().println("[CodeMC GitHub Commit Status] Updated GitHub commit status for " + targetRepo + "@" + sha + " to " + state);
     }
 
     // Form Validations

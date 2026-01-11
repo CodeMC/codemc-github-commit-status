@@ -19,12 +19,12 @@ It provides two main functionalities:
 
 Add the "CodeMC Set GitHub Commit Status to PENDING" build step.
 -   **Credentials**: Select your GitHub credentials (Secret Text or GitHub App).
--   **Context**: The status context (e.g., `jenkins/codemc`).
+-   **Context**: The status context (e.g., `jenkins`).
 -   **Repository**: (Optional) `owner/repo`. Defaults to detecting from Git SCM.
 -   **Status Message**: (Optional) Custom message (defaults to "Build started...").
 -   **Target URL**: (Optional) Custom URL (defaults to build URL).
 
-### As a Publisher (Final Status)
+### As a Notifier (Final Status)
 
 Add the "CodeMC GitHub Commit Status" post-build action.
 -   **Credentials**: Select your GitHub credentials.
@@ -39,9 +39,9 @@ You can use the following steps in your Jenkins Pipeline:
 
 **Set Pending Status:**
 ```groovy
-gitHubCommitPendingPublisher(
+gitHubCommitPendingBuilder(
     credentialId: 'my-github-creds',
-    context: 'jenkins/codemc',
+    context: 'jenkins',
     statusMessage: 'Build started...',
     repository: 'owner/repo' // Optional, auto-detected if empty
 )
@@ -49,9 +49,9 @@ gitHubCommitPendingPublisher(
 
 **Set Final Status (Post Build):**
 ```groovy
-gitHubCommitStatusPublisher(
+gitHubCommitStatusNotifier(
     credentialId: 'my-github-creds',
-    context: 'jenkins/codemc',
+    context: 'jenkins',
     statusMessage: 'Build finished correctly', // Optional
     statusUrl: 'https://custom-url.com', // Optional
     repository: 'owner/repo' // Optional

@@ -23,7 +23,7 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import org.kohsuke.github.GHCommitState;
 
 @SuppressWarnings("unused")
-public class CodeMCCommitPendingPublisher extends Builder implements SimpleBuildStep {
+public class CodeMCCommitPendingBuilder extends Builder implements SimpleBuildStep {
 
     private final String credentialId;
     private final String repository;
@@ -33,7 +33,7 @@ public class CodeMCCommitPendingPublisher extends Builder implements SimpleBuild
     private String statusUrl;
 
     @DataBoundConstructor
-    public CodeMCCommitPendingPublisher(String credentialId, String repository, String context) {
+    public CodeMCCommitPendingBuilder(String credentialId, String repository, String context) {
         this.credentialId = credentialId;
         this.repository = repository;
         this.context = context;
@@ -76,14 +76,14 @@ public class CodeMCCommitPendingPublisher extends Builder implements SimpleBuild
             String msg = (statusMessage != null && !statusMessage.isEmpty()) ? statusMessage : "Build started...";
             CommitStatusCommon.updateCommitStatus(run, listener, env, credentialId, repository, context, statusUrl, msg, GHCommitState.PENDING);
         } catch (Exception e) {
-            listener.error("[CodeMC] Error setting pending status: " + e.getMessage());
+            listener.error("[CodeMC GitHub Commit Status] Error setting pending status: " + e.getMessage());
             e.printStackTrace(listener.getLogger());
             // We usually don't fail the build if setting pending fails, but we could make it configurable. 
             // For now, let's just log error to not block the build startup.
         }
     }
 
-    @Symbol("gitHubCommitPendingPublisher")
+    @Symbol("gitHubCommitPendingBuilder")
     @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
         @Override

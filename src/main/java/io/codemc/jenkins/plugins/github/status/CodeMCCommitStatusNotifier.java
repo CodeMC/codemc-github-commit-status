@@ -11,7 +11,8 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Publisher;
-import hudson.tasks.Recorder;
+import hudson.tasks.Notifier;
+import hudson.tasks.BuildStepMonitor;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import jenkins.tasks.SimpleBuildStep;
@@ -25,7 +26,7 @@ import org.kohsuke.stapler.QueryParameter;
 import edu.umd.cs.findbugs.annotations.NonNull;
 
 @SuppressWarnings("unused")
-public class CodeMCCommitStatusPublisher extends Recorder implements SimpleBuildStep {
+public class CodeMCCommitStatusNotifier extends Notifier implements SimpleBuildStep {
 
     private final String credentialId;
     private final String repository;
@@ -36,7 +37,7 @@ public class CodeMCCommitStatusPublisher extends Recorder implements SimpleBuild
     private boolean failOnError;
 
     @DataBoundConstructor
-    public CodeMCCommitStatusPublisher(String credentialId, String repository, String context) {
+    public CodeMCCommitStatusNotifier(String credentialId, String repository, String context) {
         this.credentialId = credentialId;
         this.repository = repository;
         this.context = context;
@@ -82,6 +83,11 @@ public class CodeMCCommitStatusPublisher extends Recorder implements SimpleBuild
     }
 
     @Override
+    public BuildStepMonitor getRequiredMonitorService() {
+        return BuildStepMonitor.NONE;
+    }
+
+    @Override
     public void perform(@NonNull Run<?, ?> run, @NonNull FilePath workspace, @NonNull EnvVars env, @NonNull Launcher launcher, @NonNull TaskListener listener) {
         try {
             GHCommitState state = resolveCommitState(run.getResult());
@@ -93,7 +99,7 @@ public class CodeMCCommitStatusPublisher extends Recorder implements SimpleBuild
 
             CommitStatusCommon.updateCommitStatus(run, listener, env, credentialId, repository, context, statusUrl, statusMessage, state);
         } catch (Exception e) {
-            listener.error("[CodeMC] Error updating commit status: " + e.getMessage());
+            listener.error("[CodeMC GitHub Commit Status] Error updating commit status: " + e.getMessage());
             e.printStackTrace(listener.getLogger());
             if (failOnError) {
                 run.setResult(Result.FAILURE);
@@ -120,7 +126,7 @@ public class CodeMCCommitStatusPublisher extends Recorder implements SimpleBuild
         return GHCommitState.FAILURE;
     }
 
-    @Symbol("gitHubCommitStatusPublisher")
+    @Symbol("gitHubCommitStatusNotifier")
     @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
         @Override
